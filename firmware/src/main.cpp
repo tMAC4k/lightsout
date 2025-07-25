@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <heltec.h>
+#include <Vector.h>
+#include <string>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -10,9 +12,83 @@
 // Task handles
 TaskHandle_t loraTaskHandle;
 TaskHandle_t lightControlTaskHandle;
+TaskHandle_t menuTaskHandle;
 
 // Message buffer
 static QueueHandle_t msgQueue;
+
+// Menu System
+class MenuItem {
+public:
+    String title;
+    String id;
+    void (*callback)();
+    
+    MenuItem(String t, String i, void (*cb)()) : title(t), id(i), callback(cb) {}
+};
+
+class MenuSystem {
+private:
+    Vector<MenuItem*> items;
+    int currentIndex = 0;
+    bool needsRedraw = true;
+    unsigned long lastInputTime = 0;
+    const unsigned long inputDebounce = 200; // ms
+
+public:
+    MenuSystem() {
+        items.setStorage(MenuItem*[10]); // Max 10 menu items
+    }
+    
+    void addItem(String title, String id, void (*callback)()) {
+        items.push_back(new MenuItem(title, id, callback));
+    }
+    
+    void next() {
+        if (millis() - lastInputTime < inputDebounce) return;
+        currentIndex = (currentIndex + 1) % items.size();
+        needsRedraw = true;
+        lastInputTime = millis();
+    }
+    
+    void select() {
+        if (millis() - lastInputTime < inputDebounce) return;
+        if (items[currentIndex]->callback) {
+            items[currentIndex]->callback();
+        }
+        lastInputTime = millis();
+    }
+    
+    void draw() {
+        if (!needsRedraw) return;
+        
+        Heltec.display->clear();
+        Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+        Heltec.display->setFont(ArialMT_Plain_10);
+        
+        // Draw title
+        Heltec.display->drawString(0, 0, "[LightsOut Node]");
+        Heltec.display->drawHorizontalLine(0, 12, 128);
+        
+        // Draw menu items
+        for (int i = 0; i < min(3, items.size()); i++) {
+            int displayIndex = (currentIndex - 1 + i + items.size()) % items.size();
+            String prefix = (i == 1) ? "> " : "  ";
+            Heltec.display->drawString(0, 16 + i * 16, 
+                prefix + items[displayIndex]->title);
+        }
+        
+        // Draw status bar
+        Heltec.display->drawHorizontalLine(0, 52, 128);
+        Heltec.display->drawString(0, 54, "RF: 868MHz");
+        
+        Heltec.display->display();
+        needsRedraw = false;
+    }
+};
+
+// Global menu instance
+MenuSystem menu;
 
 // Function prototypes
 void loraTask(void *pvParameters);
