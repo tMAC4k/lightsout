@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LightsOut Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-blue-600 p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="text-white font-bold text-xl">LightsOut Dashboard</div>
+                <div class="flex space-x-4">
+                    <button id="realtime-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Realtime
+                    </button>
+                    <button id="history-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        History
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container mx-auto p-4">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-gray-500 text-sm">Active Nodes</h3>
+                    <p class="text-2xl font-bold" id="active-nodes">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-gray-500 text-sm">Total Messages</h3>
+                    <p class="text-2xl font-bold" id="total-messages">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-gray-500 text-sm">Signal Strength</h3>
+                    <p class="text-2xl font-bold" id="signal-strength">-</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-gray-500 text-sm">Last Update</h3>
+                    <p class="text-2xl font-bold" id="last-update">-</p>
+                </div>
+            </div>
+
+            <!-- Map and Table Layout -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Map -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold mb-4">Node Locations</h2>
+                    <div id="map" class="h-96"></div>
+                </div>
+
+                <!-- Real-time Data Table -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold mb-4">Node Status</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="px-4 py-2">Node ID</th>
+                                    <th class="px-4 py-2">Status</th>
+                                    <th class="px-4 py-2">RSSI</th>
+                                    <th class="px-4 py-2">Last Seen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nodes-table">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold mb-4">Signal Strength History</h2>
+                    <canvas id="signal-chart"></canvas>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold mb-4">Message Activity</h2>
+                    <canvas id="activity-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket Connection
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        let map;
+        let markers = {};
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const signalCtx = document.getElementById('signal-chart').getContext('2d');
+            const activityCtx = document.getElementById('activity-chart').getContext('2d');
+
+            new Chart(signalCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'RSSI',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                }
+            });
+
+            new Chart(activityCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Messages per minute',
+                        data: [],
+                        backgroundColor: 'rgb(54, 162, 235)'
+                    }]
+                }
+            });
+        }
+
+        // Update node on map
+        function updateNodeMarker(node) {
+            if (markers[node.id]) {
+                markers[node.id].setLatLng([node.lat, node.lng]);
+            } else {
+                markers[node.id] = L.marker([node.lat, node.lng])
+                    .bindPopup(`Node ${node.id}<br>Status: ${node.status}`)
+                    .addTo(map);
+            }
+        }
+
+        // Update table row
+        function updateNodeRow(node) {
+            let row = document.getElementById(`node-${node.id}`);
+            if (!row) {
+                row = document.createElement('tr');
+                row.id = `node-${node.id}`;
+                document.getElementById('nodes-table').appendChild(row);
+            }
+            row.innerHTML = `
+                <td class="border px-4 py-2">${node.id}</td>
+                <td class="border px-4 py-2">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${node.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${node.status}
+                    </span>
+                </td>
+                <td class="border px-4 py-2">${node.rssi} dBm</td>
+                <td class="border px-4 py-2">${new Date(node.lastSeen).toLocaleString()}</td>
+            `;
+        }
+
+        // WebSocket message handler
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            // Update stats
+            document.getElementById('active-nodes').textContent = data.stats.activeNodes;
+            document.getElementById('total-messages').textContent = data.stats.totalMessages;
+            document.getElementById('signal-strength').textContent = `${data.stats.avgRssi} dBm`;
+            document.getElementById('last-update').textContent = new Date().toLocaleString();
+
+            // Update nodes
+            data.nodes.forEach(node => {
+                updateNodeMarker(node);
+                updateNodeRow(node);
+            });
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            initCharts();
+        });
+    </script>
+</body>
+</html>
