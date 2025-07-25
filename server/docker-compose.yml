@@ -1,0 +1,21 @@
+version: '3'
+services:
+  leshan:
+    image: eclipse/leshan
+    ports:
+      - "8080:8080"
+      - "5683:5683/udp"
+      - "5684:5684/udp"
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./firmware:/firmware
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+    depends_on:
+      - leshan
