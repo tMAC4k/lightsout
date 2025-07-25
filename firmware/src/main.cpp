@@ -4,10 +4,19 @@
 #include <string>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 // Pin definitions
 #define RELAY_PIN 21  // Example GPIO pin for relay control
 #define LED_BUILTIN 25
+
+// WiFi credentials (will be updated via menu)
+String wifi_ssid = "";
+String wifi_password = "";
+bool wifi_configured = false;
 
 // Task handles
 TaskHandle_t loraTaskHandle;
