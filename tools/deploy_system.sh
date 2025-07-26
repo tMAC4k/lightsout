@@ -37,12 +37,15 @@ sudo apt-get update
 sudo apt-get install -y \
     python3-pip \
     python3-venv \
+    python3-dev \
+    python3-wheel \
     git \
     rtl-sdr \
     librtlsdr-dev \
     build-essential \
     libusb-1.0-0-dev \
-    pkg-config
+    pkg-config \
+    libffi-dev
 
 check_status "System dependencies installation"
 
@@ -76,10 +79,10 @@ check_status "Repository setup"
 # Install Python requirements
 echo -e "\n${YELLOW}📚 Installing Python packages...${NC}"
 cd "$REPO_PATH/server"
-# Ensure pip is up to date in the virtual environment
-"$VENV_PATH/bin/pip" install --upgrade pip
-# Install requirements using the virtual environment's pip
-"$VENV_PATH/bin/pip" install -r requirements.txt
+# Ensure pip and build tools are up to date in the virtual environment
+"$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
+# Install requirements using the virtual environment's pip, prefer binary packages
+"$VENV_PATH/bin/pip" install --prefer-binary -r requirements.txt
 check_status "Python packages installation"
 
 # Create configuration directory
