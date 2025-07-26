@@ -17,6 +17,9 @@ sudo apt-get install -y \
     python3-venv \
     python3-dev \
     python3-wheel \
+    python3-aiohttp \
+    python3-setuptools \
+    python3-cryptography \
     git \
     rtl-sdr \
     librtlsdr-dev \
@@ -52,10 +55,21 @@ fi
 
 # Install Python requirements
 cd "$REPO_PATH/server"
+# Create a temporary requirements file without aiohttp
+grep -v "aiohttp==" requirements.txt > requirements_temp.txt
 # Ensure pip and build tools are up to date
 "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
-# Install requirements with binary preference
-"$VENV_PATH/bin/pip" install --prefer-binary -r requirements.txt
+
+# Try to install aiohttp from the system package
+echo "Installing aiohttp from system package..."
+"$VENV_PATH/bin/pip" install --no-deps aiohttp
+
+# Install remaining requirements
+echo "Installing other requirements..."
+"$VENV_PATH/bin/pip" install --prefer-binary -r requirements_temp.txt
+
+# Clean up temporary file
+rm requirements_temp.txt
 
 # Create service file
 echo "🔧 Creating systemd service..."
