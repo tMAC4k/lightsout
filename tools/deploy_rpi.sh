@@ -1,7 +1,26 @@
 #!/bin/bash
 
 # LightsOut Deployment Script
-echo "🚀 LightsOut Deployment Script"
+echo "🚀 Li# Install Python requirements
+cd "$REPO_PATH/server"
+
+# Ensure pip and build tools are up to date
+echo "Upgrading pip and build tools..."
+"$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
+
+# Install aiohttp dependencies first
+echo "Installing aiohttp dependencies..."
+"$VENV_PATH/bin/pip" install --prefer-binary multidict yarl async-timeout attrs charset-normalizer frozenlist aiosignal
+
+# Install aiohttp with a specific version known to work on ARM64
+echo "Installing aiohttp..."
+"$VENV_PATH/bin/pip" install --prefer-binary "aiohttp==3.7.4"
+
+# Install remaining requirements, excluding aiohttp
+echo "Installing remaining requirements..."
+grep -v "aiohttp==" requirements.txt > requirements_temp.txt
+"$VENV_PATH/bin/pip" install --prefer-binary -r requirements_temp.txt
+rm requirements_temp.txtt Script"
 
 # Check if running on Raspberry Pi
 if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
@@ -17,9 +36,6 @@ sudo apt-get install -y \
     python3-venv \
     python3-dev \
     python3-wheel \
-    python3-aiohttp \
-    python3-setuptools \
-    python3-cryptography \
     git \
     rtl-sdr \
     librtlsdr-dev \
@@ -27,7 +43,9 @@ sudo apt-get install -y \
     docker-compose \
     build-essential \
     libffi-dev \
-    pkg-config
+    pkg-config \
+    python3-multidict \
+    python3-yarl
 
 # Enable and start Docker
 sudo systemctl enable docker
