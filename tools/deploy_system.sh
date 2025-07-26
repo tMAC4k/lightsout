@@ -60,13 +60,15 @@ source ~/lightsout_env/bin/activate
 check_status "Python environment creation"
 
 # Clone or update repository
-if [ -d "~/lightsout" ]; then
+REPO_PATH="$HOME/lightsout"
+if [ -d "$REPO_PATH" ]; then
     echo -e "\n${YELLOW}📥 Updating LightsOut repository...${NC}"
-    cd ~/lightsout
-    git pull origin main
+    cd "$REPO_PATH"
+    git fetch origin
+    git reset --hard origin/main
 else
     echo -e "\n${YELLOW}📥 Cloning LightsOut repository...${NC}"
-    git clone https://github.com/tMAC4k/lightsout.git ~/lightsout
+    git clone https://github.com/tMAC4k/lightsout.git "$REPO_PATH"
 fi
 check_status "Repository setup"
 
