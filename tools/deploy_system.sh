@@ -73,7 +73,10 @@ check_status "Repository setup"
 # Install Python requirements
 echo -e "\n${YELLOW}📚 Installing Python packages...${NC}"
 cd ~/lightsout/server
-pip install -r requirements.txt
+# Ensure pip is up to date in the virtual environment
+~/lightsout_env/bin/pip install --upgrade pip
+# Install requirements using the virtual environment's pip
+~/lightsout_env/bin/pip install -r requirements.txt
 check_status "Python packages installation"
 
 # Create configuration directory
