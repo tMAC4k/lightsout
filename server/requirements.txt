@@ -10,6 +10,3 @@ websockets==10.0
 rich==10.12.0
 click==8.0.3
 aiohttp==3.8.1
-click==8.0.3
-rich==10.12.0
-pyrtlsdr==0.2.9

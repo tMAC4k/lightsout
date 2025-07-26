@@ -55,8 +55,9 @@ check_status "Docker setup"
 
 # Create Python virtual environment
 echo -e "\n${YELLOW}🐍 Setting up Python environment...${NC}"
-python3 -m venv ~/lightsout_env
-source ~/lightsout_env/bin/activate
+VENV_PATH="$HOME/lightsout_env"
+python3 -m venv "$VENV_PATH"
+source "$VENV_PATH/bin/activate"
 check_status "Python environment creation"
 
 # Clone or update repository
@@ -74,11 +75,11 @@ check_status "Repository setup"
 
 # Install Python requirements
 echo -e "\n${YELLOW}📚 Installing Python packages...${NC}"
-cd ~/lightsout/server
+cd "$REPO_PATH/server"
 # Ensure pip is up to date in the virtual environment
-~/lightsout_env/bin/pip install --upgrade pip
+"$VENV_PATH/bin/pip" install --upgrade pip
 # Install requirements using the virtual environment's pip
-~/lightsout_env/bin/pip install -r requirements.txt
+"$VENV_PATH/bin/pip" install -r requirements.txt
 check_status "Python packages installation"
 
 # Create configuration directory
