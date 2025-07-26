@@ -1,26 +1,7 @@
 #!/bin/bash
 
 # LightsOut Deployment Script
-echo "🚀 Li# Install Python requirements
-cd "$REPO_PATH/server"
-
-# Ensure pip and build tools are up to date
-echo "Upgrading pip and build tools..."
-"$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
-
-# Install aiohttp dependencies first
-echo "Installing aiohttp dependencies..."
-"$VENV_PATH/bin/pip" install --prefer-binary multidict yarl async-timeout attrs charset-normalizer frozenlist aiosignal
-
-# Install aiohttp with a specific version known to work on ARM64
-echo "Installing aiohttp..."
-"$VENV_PATH/bin/pip" install --prefer-binary "aiohttp==3.7.4"
-
-# Install remaining requirements, excluding aiohttp
-echo "Installing remaining requirements..."
-grep -v "aiohttp==" requirements.txt > requirements_temp.txt
-"$VENV_PATH/bin/pip" install --prefer-binary -r requirements_temp.txt
-rm requirements_temp.txtt Script"
+echo "🚀 LightsOut Deployment Script"
 
 # Check if running on Raspberry Pi
 if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
@@ -28,69 +9,36 @@ if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
     exit 1
 fi
 
-# Install system dependencies
+# Install minimal system dependencies
 echo "📦 Installing system dependencies..."
 sudo apt-get update
 sudo apt-get install -y \
     python3-pip \
     python3-venv \
-    python3-dev \
-    python3-wheel \
-    git \
-    rtl-sdr \
-    librtlsdr-dev \
-    docker.io \
-    docker-compose \
-    build-essential \
-    libffi-dev \
-    pkg-config \
-    python3-multidict \
-    python3-yarl
+    git
 
-# Enable and start Docker
-sudo systemctl enable docker
-sudo systemctl start docker
-sudo usermod -aG docker $USER
-
-# Create Python virtual environment
-echo "🐍 Setting up Python environment..."
+# Setup paths
 VENV_PATH="$HOME/lightsout_env"
 REPO_PATH="$HOME/lightsout"
 
+# Create Python virtual environment
+echo "🐍 Setting up Python environment..."
 python3 -m venv "$VENV_PATH"
 source "$VENV_PATH/bin/activate"
 
-# Clone repository if not exists
-if [ ! -d "$REPO_PATH" ]; then
-    echo "📥 Cloning LightsOut repository..."
-    git clone https://github.com/tMAC4k/lightsout.git "$REPO_PATH"
-else
-    echo "📥 Updating LightsOut repository..."
-    cd "$REPO_PATH"
-    git fetch origin
-    git reset --hard origin/main
-fi
+# Clone repository
+echo "📥 Setting up repository..."
+rm -rf "$REPO_PATH"
+git clone https://github.com/tMAC4k/lightsout.git "$REPO_PATH"
 
 # Install Python requirements
+echo "📦 Installing Python packages..."
 cd "$REPO_PATH/server"
-# Create a temporary requirements file without aiohttp
-grep -v "aiohttp==" requirements.txt > requirements_temp.txt
-# Ensure pip and build tools are up to date
-"$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
+pip install --upgrade pip
+pip install -r requirements.txt
 
-# Try to install aiohttp from the system package
-echo "Installing aiohttp from system package..."
-"$VENV_PATH/bin/pip" install --no-deps aiohttp
-
-# Install remaining requirements
-echo "Installing other requirements..."
-"$VENV_PATH/bin/pip" install --prefer-binary -r requirements_temp.txt
-
-# Clean up temporary file
-rm requirements_temp.txt
-
-# Create service file
-echo "🔧 Creating systemd service..."
+# Create basic service
+echo "🔧 Creating service..."
 sudo tee /etc/systemd/system/lightsout.service << EOF
 [Unit]
 Description=LightsOut Control System
@@ -108,16 +56,9 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-# Reload systemd and enable service
 sudo systemctl daemon-reload
 sudo systemctl enable lightsout
 sudo systemctl start lightsout
 
 echo "✅ Installation complete!"
-echo "💡 Usage:"
-echo "  - Control center: lightsout"
-echo "  - Monitor RF: lightsout monitor"
-echo "  - View devices: lightsout devices"
-echo ""
-echo "🔄 The service will start automatically on boot"
-echo "📝 Check logs with: journalctl -u lightsout -f"
+echo "💡 Service status: sudo systemctl status lightsout"
