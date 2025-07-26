@@ -1,0 +1,144 @@
+#include "Arduino.h"
+#include "Vector.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include <algorithm>
+#include <SPI.h>
+#include <LoRa.h>
+
+// Pin definitions for Heltec WiFi LoRa 32 V3
+#define RELAY_PIN 21
+#define LORA_POWER 20
+
+// LoRa pins for Heltec WiFi LoRa 32 V3
+#define LORA_SCK     9
+#define LORA_MISO    11
+#define LORA_MOSI    10
+#define LORA_CS      8
+#define LORA_RST     12
+#define LORA_IRQ     14
+
+// Use builtin LED for ESP32
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 25
+#endif
+
+// Global variables
+static QueueHandle_t msgQueue = NULL;
+static TaskHandle_t loraTaskHandle = NULL;
+static TaskHandle_t lightControlTaskHandle = NULL;
+
+void loraTask(void *pvParameters) {
+    uint8_t packet[255];
+    
+    // Configure LoRa parameters
+    LoRa.setFrequency(868E6);
+    LoRa.setSpreadingFactor(7);
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setCodingRate4(5);
+    LoRa.setPreambleLength(8);
+    LoRa.setSyncWord(0x12);
+    LoRa.setTxPower(LORA_POWER);
+    LoRa.enableCrc();
+    
+    Serial.println("LoRa Task Started");
+    
+    for(;;) {
+        int packetSize = LoRa.parsePacket();
+        if (packetSize) {
+            Serial.println("Packet received!");
+            int i = 0;
+            while (LoRa.available()) {
+                packet[i++] = LoRa.read();
+            }
+            
+            if (i > 0) {
+                packet[i] = 0; // Null terminate
+                Serial.printf("Received: %s\n", packet);
+                xQueueSend(msgQueue, &packet[0], portMAX_DELAY);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+void lightControlTask(void *pvParameters) {
+    uint8_t command;
+    
+    for(;;) {
+        if (xQueueReceive(msgQueue, &command, portMAX_DELAY) == pdTRUE) {
+            switch (command) {
+                case '1':  // Turn on
+                    digitalWrite(RELAY_PIN, HIGH);
+                    digitalWrite(LED_BUILTIN, HIGH);
+                    LoRa.beginPacket();
+                    LoRa.print("ACK:ON");
+                    LoRa.endPacket();
+                    break;
+                    
+                case '0':  // Turn off
+                    digitalWrite(RELAY_PIN, LOW);
+                    digitalWrite(LED_BUILTIN, LOW);
+                    LoRa.beginPacket();
+                    LoRa.print("ACK:OFF");
+                    LoRa.endPacket();
+                    break;
+            }
+        }
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+    delay(300);
+    
+    Serial.println("Starting LightsOut Node...");
+    
+    // Initialize GPIO
+    pinMode(RELAY_PIN, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
+    
+    // Initialize LoRa
+    Serial.println("Initializing LoRa...");
+    SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
+    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
+    
+    if (!LoRa.begin(868E6)) {
+        Serial.println("LoRa initialization failed!");
+        while (1) {
+            delay(100);
+        }
+    }
+    Serial.println("LoRa initialized!");
+    
+    // Create message queue
+    msgQueue = xQueueCreate(10, sizeof(uint8_t));
+    if (msgQueue == NULL) {
+        Serial.println("Failed to create message queue!");
+        while (1) {
+            delay(100);
+        }
+    }
+    
+    // Create tasks
+    if (xTaskCreate(loraTask, "LoRaTask", 10000, NULL, 1, &loraTaskHandle) != pdPASS) {
+        Serial.println("Failed to create LoRa task!");
+        while (1) {
+            delay(100);
+        }
+    }
+    
+    if (xTaskCreate(lightControlTask, "LightControl", 10000, NULL, 1, &lightControlTaskHandle) != pdPASS) {
+        Serial.println("Failed to create Light Control task!");
+        while (1) {
+            delay(100);
+        }
+    }
+    
+    Serial.println("Setup complete!");
+}
+
+void loop() {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+}
