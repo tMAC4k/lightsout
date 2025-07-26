@@ -4,6 +4,26 @@
 #define RELAY_PIN 21
 #define STATUS_LED 35  // Built-in LED on GPIO35 for Heltec WiFi LoRa 32 V3
 
+// WiFi Configuration
+#define WIFI_SSID "YourSSID"        // Replace with your WiFi SSID
+#define WIFI_PASSWORD "YourPass"     // Replace with your WiFi password
+#define WIFI_TIMEOUT 10000          // Connection timeout in milliseconds
+
+// MQTT Configuration
+#define MQTT_BROKER "mqtt.example.com"  // Replace with your MQTT broker address
+#define MQTT_PORT 1883
+#define MQTT_USERNAME "mqtt_user"     // Replace with your MQTT username
+#define MQTT_PASSWORD "mqtt_pass"     // Replace with your MQTT password
+#define MQTT_CLIENT_ID "lights_out_node"
+#define MQTT_TOPIC_PREFIX "lights_out/"
+#define MQTT_TOPIC_STATE MQTT_TOPIC_PREFIX "state"
+#define MQTT_TOPIC_COMMAND MQTT_TOPIC_PREFIX "command"
+
+// OTA Configuration
+#define OTA_HOSTNAME "lights-out-node"
+#define OTA_PASSWORD "admin123"      // Password for OTA updates
+#define OTA_PORT 3232
+
 // LoRa Configuration for Heltec WiFi LoRa 32 V3
 #define LORA_BAND        868E6  // Hz
 #define LORA_SF         7      // Spreading Factor

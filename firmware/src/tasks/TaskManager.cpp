@@ -50,20 +50,16 @@ bool TaskManager::begin() {
 }
 
 void TaskManager::loraTask(void* pvParameters) {
-    lora_message_t msg;
+    static uint8_t packet[255];
     
     Serial.println("LoRa Task Started");
     
     for(;;) {
         int received = LoRaHandler::receive(packet, sizeof(packet));
         if (received > 0) {
-            msg.command = parseCommand(packet); // Implement command parsing
-            strncpy(msg.payload, packet, sizeof(msg.payload)-1);
-            xQueueSend(msgQueue, &msg, portMAX_DELAY);
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
-}
+            Serial.printf("Received: %s
+", packet);
+            xQueueSend(msgQueue, &packet[0], portMAX_DELAY);
 
 void TaskManager::lightControlTask(void* pvParameters) {
     uint8_t command;

@@ -9,6 +9,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Exit on any error
+set -e
+
 echo -e "${GREEN}🚀 LightsOut System Deployment${NC}"
 echo "----------------------------------------"
 
@@ -37,8 +40,6 @@ sudo apt-get install -y \
     git \
     rtl-sdr \
     librtlsdr-dev \
-    docker.io \
-    docker-compose \
     build-essential \
     libusb-1.0-0-dev \
     pkg-config
