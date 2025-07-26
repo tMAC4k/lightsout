@@ -1,6 +1,7 @@
 #include "TaskManager.h"
 #include "config.h"
 #include "../lora/LoRaHandler.h"
+#include "../mqtt/MQTTManager.h"
 #include <Arduino.h>
 
 QueueHandle_t TaskManager::msgQueue = NULL;
@@ -57,9 +58,12 @@ void TaskManager::loraTask(void* pvParameters) {
     for(;;) {
         int received = LoRaHandler::receive(packet, sizeof(packet));
         if (received > 0) {
-            Serial.printf("Received: %s
-", packet);
+            Serial.printf("Received: %s\n", packet);
             xQueueSend(msgQueue, &packet[0], portMAX_DELAY);
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
 
 void TaskManager::lightControlTask(void* pvParameters) {
     uint8_t command;
@@ -73,6 +77,8 @@ void TaskManager::lightControlTask(void* pvParameters) {
                     digitalWrite(RELAY_PIN, HIGH);
                     digitalWrite(STATUS_LED, HIGH);
                     LoRaHandler::sendAck("ON");
+                    MQTTManager::publish(MQTT_TOPIC_STATE, "ON");
+                    Serial.println("Light ON");
                     Serial.println("Light ON");
                     break;
                     
@@ -80,6 +86,8 @@ void TaskManager::lightControlTask(void* pvParameters) {
                     digitalWrite(RELAY_PIN, LOW);
                     digitalWrite(STATUS_LED, LOW);
                     LoRaHandler::sendAck("OFF");
+                    MQTTManager::publish(MQTT_TOPIC_STATE, "OFF");
+                    Serial.println("Light OFF");
                     Serial.println("Light OFF");
                     break;
             }
