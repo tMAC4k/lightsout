@@ -15,11 +15,16 @@ sudo apt-get update
 sudo apt-get install -y \
     python3-pip \
     python3-venv \
+    python3-dev \
+    python3-wheel \
     git \
     rtl-sdr \
     librtlsdr-dev \
     docker.io \
-    docker-compose
+    docker-compose \
+    build-essential \
+    libffi-dev \
+    pkg-config
 
 # Enable and start Docker
 sudo systemctl enable docker
@@ -28,18 +33,29 @@ sudo usermod -aG docker $USER
 
 # Create Python virtual environment
 echo "🐍 Setting up Python environment..."
-python3 -m venv ~/lightsout_env
-source ~/lightsout_env/bin/activate
+VENV_PATH="$HOME/lightsout_env"
+REPO_PATH="$HOME/lightsout"
+
+python3 -m venv "$VENV_PATH"
+source "$VENV_PATH/bin/activate"
 
 # Clone repository if not exists
-if [ ! -d "~/lightsout" ]; then
+if [ ! -d "$REPO_PATH" ]; then
     echo "📥 Cloning LightsOut repository..."
-    git clone https://github.com/tMAC4k/lightsout.git ~/lightsout
+    git clone https://github.com/tMAC4k/lightsout.git "$REPO_PATH"
+else
+    echo "📥 Updating LightsOut repository..."
+    cd "$REPO_PATH"
+    git fetch origin
+    git reset --hard origin/main
 fi
 
 # Install Python requirements
-cd ~/lightsout/server
-pip install -r requirements.txt
+cd "$REPO_PATH/server"
+# Ensure pip and build tools are up to date
+"$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
+# Install requirements with binary preference
+"$VENV_PATH/bin/pip" install --prefer-binary -r requirements.txt
 
 # Create service file
 echo "🔧 Creating systemd service..."
